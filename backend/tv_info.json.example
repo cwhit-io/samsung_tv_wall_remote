@@ -1,0 +1,21 @@
+{
+    "tvs": {
+        "10.10.97.100": {
+            "name": "T1 TV",
+            "model": "QN75QN90DAFXZA",
+            "last_updated": "YYYY-MM-DD HH:MM:SS",
+            "mac": "AA:BB:CC:DD:EE:FF",
+            "token": "12345678",
+            "paired_client_mac": null
+        },
+        "10.10.97.101": {
+            "name": "M1 TV",
+            "model": "QN75QN90DAFXZA",
+            "last_updated": "YYYY-MM-DD HH:MM:SS",
+            "mac": "AA:BB:CC:DD:EE:11",
+            "token": "87654321",
+            "paired_client_mac": null
+        }
+        // Add more TVs as needed
+    }
+}

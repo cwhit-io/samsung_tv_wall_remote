@@ -1,0 +1,19 @@
+# Requirements for Samsung TV Controller Web App
+# Python 3.7+ required (for dataclasses and other features)
+
+# Web interface dependencies
+flask>=2.0.0
+flask-socketio>=5.0.0
+
+# Samsung TV control dependencies
+websocket-client>=1.0.0  # Required for TV WebSocket connections
+
+# Note: On Linux systems you may need to install tkinter package if using the GUI version:
+#   Ubuntu/Debian: sudo apt-get install python3-tk
+#   Fedora: sudo dnf install python3-tkinter
+#   Arch Linux: sudo pacman -S tk
+#   Windows: Included with Python installation
+#   macOS: Included with Python installation
+
+# Local dependencies:
+# - samsung_controller.py (must be in same directory)
