@@ -111,6 +111,50 @@ curl -X POST http://localhost:8000/bulk-command \
   -d '{"ips": ["10.10.97.138"], "command": "KEY_VOLUP"}'
 ```
 
+## Docker Deployment
+
+### Using Pre-built Images
+
+The easiest way to deploy is using the pre-built Docker images:
+
+```bash
+# Using production compose file
+docker-compose -f docker-compose.prod.yml up -d
+
+# Or manually with Docker/Podman
+docker run -d --name tv-wall-backend \
+  -p 8000:8000 \
+  -v ./backend/tv_info.json:/app/tv_info.json:ro \
+  -v ./backend/tv_keys.json:/app/tv_keys.json:ro \
+  cwhitio/tv-wall-backend:latest
+
+docker run -d --name tv-wall-frontend \
+  -p 3000:80 \
+  -e REACT_APP_API_URL=http://localhost:8000 \
+  cwhitio/tv-wall-frontend:latest
+```
+
+### Docker Hub Repositories
+
+- **Backend**: [cwhitio/tv-wall-backend](https://hub.docker.com/r/cwhitio/tv-wall-backend)
+- **Frontend**: [cwhitio/tv-wall-frontend](https://hub.docker.com/r/cwhitio/tv-wall-frontend)
+
+### Building Locally
+
+If you prefer to build the images yourself:
+
+```bash
+# Build both images
+docker-compose build
+
+# Or build individually
+docker build -t tv-wall-backend ./backend
+docker build -t tv-wall-frontend ./frontend
+
+# Run with docker-compose
+docker-compose up -d
+```
+
 ## Configuration
 
 - Edit `backend/tv_info.json` to add or update TV details (see `tv_info.json.example`)
@@ -120,6 +164,7 @@ curl -X POST http://localhost:8000/bulk-command \
 
 - The backend must be accessible from the frontend (update API_BASE in App.tsx if needed)
 - `tv_info.json` is ignored by git for privacy; use the example file for sharing configs
+- For production deployment, mount your TV configuration files as volumes
 
 ## License
 

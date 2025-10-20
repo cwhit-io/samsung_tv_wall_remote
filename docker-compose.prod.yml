@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  backend:
+    image: cwhitio/tv-wall-backend:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONPATH=/app
+    volumes:
+      - ./backend/tv_info.json:/app/tv_info.json:ro  # Mount your TV config
+      - ./backend/tv_keys.json:/app/tv_keys.json:ro  # Mount your key mappings
+    networks:
+      - tv-controller
+    restart: unless-stopped
+
+  frontend:
+    image: cwhitio/tv-wall-frontend:latest
+    ports:
+      - "3000:80"  # Map to nginx port 80
+    depends_on:
+      - backend
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+    networks:
+      - tv-controller
+    restart: unless-stopped
+
+networks:
+  tv-controller:
+    driver: bridge
