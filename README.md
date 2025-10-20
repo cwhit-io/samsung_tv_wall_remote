@@ -17,7 +17,6 @@ samsung-tv-controller/
 ├── backend/
 │   ├── main.py              # FastAPI backend
 │   ├── samsung_controller.py
-│   ├── samsung_controller_2.py
 │   ├── tv_info.json         # TV configuration (ignored by git)
 │   ├── tv_info.json.example # Example config
 │   ├── tv_keys.json         # Key mapping
@@ -67,6 +66,50 @@ samsung-tv-controller/
 - Select TVs from the grid (T1-T5, M1-M5, B1-B5)
 - Use the remote control UI to send commands to selected TVs
 - All commands are sent concurrently for fast bulk control
+
+## API Endpoints
+
+The FastAPI backend provides the following REST endpoints:
+
+### Core Endpoints
+
+- **GET** `/` - API information and detected functions
+- **GET** `/health` - Health check endpoint for monitoring
+- **GET** `/tvs` - Get all discovered/configured TVs
+- **GET** `/commands` - Get all available TV commands/keys
+- **POST** `/bulk-command` - Execute command on multiple TVs concurrently
+
+### Management Endpoints
+
+- **GET** `/functions` - Get all detected functions from samsung_controller module
+- **GET** `/debug/{ip}` - Detailed debug information for a specific TV
+
+### API Documentation
+
+When the backend is running, visit:
+
+- **Swagger UI**: `http://localhost:8000/docs`
+- **ReDoc**: `http://localhost:8000/redoc`
+
+### Example API Usage
+
+```bash
+# Get all TVs
+curl http://localhost:8000/tvs
+
+# Get available commands
+curl http://localhost:8000/commands
+
+# Send power-on to multiple TVs
+curl -X POST http://localhost:8000/bulk-command \
+  -H "Content-Type: application/json" \
+  -d '{"ips": ["10.10.97.138", "10.10.97.78"], "command": "power-on"}'
+
+# Send volume up to all selected TVs
+curl -X POST http://localhost:8000/bulk-command \
+  -H "Content-Type: application/json" \
+  -d '{"ips": ["10.10.97.138"], "command": "KEY_VOLUP"}'
+```
 
 ## Configuration
 
