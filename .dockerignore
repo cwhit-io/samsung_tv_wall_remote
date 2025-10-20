@@ -1,16 +1,19 @@
 # Docker files
+
 Dockerfile
 docker-compose.yml
 .dockerignore
 
 # Backend Python cache and env
-backend/__pycache__/
-backend/*.pyc
+
+backend/**pycache**/
+backend/\*.pyc
 backend/.env
 backend/venv/
 backend/.venv/
 
 # Frontend node modules and build
+
 frontend/node_modules/
 frontend/build/
 frontend/.env
@@ -20,13 +23,15 @@ frontend/.env.test.local
 frontend/.env.production.local
 
 # Logs
-*.log
+
+\*.log
 logs/
 
 # OS generated files
-.DS_Store
+
+.DS*Store
 .DS_Store?
-._*
+.*\*
 .Spotlight-V100
 .Trashes
 ehthumbs.db
