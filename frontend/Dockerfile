@@ -47,11 +47,11 @@ RUN touch /var/run/nginx.pid && \
 USER nextjs
 
 # Expose port
-EXPOSE 3000
+EXPOSE 80
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1
 
 # Start with custom entrypoint
 ENTRYPOINT ["/docker-entrypoint.sh"]
