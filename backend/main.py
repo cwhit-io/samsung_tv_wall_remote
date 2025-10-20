@@ -41,6 +41,12 @@ def get_samsung_functions():
 SAMSUNG_FUNCTIONS = get_samsung_functions()
 logger.info(f"Available samsung_controller functions: {list(SAMSUNG_FUNCTIONS.keys())}")
 
+# Health check endpoint for Docker
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for Docker and monitoring"""
+    return {"status": "healthy", "service": "Samsung TV Controller API"}
+
 # Pydantic models
 class TVCommand(BaseModel):
   ips: List[str]
