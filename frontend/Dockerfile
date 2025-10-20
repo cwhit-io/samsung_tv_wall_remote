@@ -22,8 +22,13 @@ FROM nginx:alpine
 # Copy built app from build stage
 COPY --from=build /app/build /usr/share/nginx/html
 
-# Copy custom nginx configuration
+# Copy nginx configurations
 COPY nginx.conf /etc/nginx/nginx.conf
+COPY nginx-standalone.conf /etc/nginx/nginx-standalone.conf
+
+# Create entrypoint script to choose nginx config
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 # Create non-root user for nginx
 RUN addgroup -g 1001 -S nodejs && \
@@ -48,5 +53,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
 
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Start with custom entrypoint
+ENTRYPOINT ["/docker-entrypoint.sh"]
