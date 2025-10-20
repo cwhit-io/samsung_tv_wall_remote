@@ -19,6 +19,6 @@ else
     echo "Warning: REACT_APP_API_URL not set. Frontend may not be able to connect to backend."
 fi
 
-# Switch to non-root user and start nginx
+# Start nginx as root (nginx will drop privileges for worker processes)
 echo "Starting nginx..."
-exec su-exec nextjs nginx -g "daemon off;"
+exec nginx -g "daemon off;"
