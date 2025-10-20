@@ -19,12 +19,15 @@ RUN npm run build
 # Production stage with nginx
 FROM nginx:alpine
 
+# Install su-exec for user switching
+RUN apk add --no-cache su-exec
+
 # Copy built app from build stage
 COPY --from=build /app/build /usr/share/nginx/html
 
-# Copy nginx configurations
-COPY nginx.conf /etc/nginx/nginx.conf
-COPY nginx-standalone.conf /etc/nginx/nginx-standalone.conf
+# Copy nginx configurations to custom location
+COPY nginx.conf /etc/nginx/templates/nginx-backend.conf
+COPY nginx-standalone.conf /etc/nginx/templates/nginx-standalone.conf
 
 # Create entrypoint script to choose nginx config
 COPY docker-entrypoint.sh /docker-entrypoint.sh
@@ -34,17 +37,18 @@ RUN chmod +x /docker-entrypoint.sh
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001
 
-# Set proper permissions
-RUN chown -R nextjs:nodejs /usr/share/nginx/html && \
+# Create templates directory and set permissions
+RUN mkdir -p /etc/nginx/templates && \
+    chown -R nextjs:nodejs /usr/share/nginx/html && \
     chown -R nextjs:nodejs /var/cache/nginx && \
     chown -R nextjs:nodejs /var/log/nginx && \
-    chown -R nextjs:nodejs /etc/nginx/conf.d
+    chown -R nextjs:nodejs /etc/nginx/conf.d && \
+    chown -R nextjs:nodejs /etc/nginx/templates
 
 RUN touch /var/run/nginx.pid && \
     chown -R nextjs:nodejs /var/run/nginx.pid
 
-# Switch to non-root user
-USER nextjs
+# Don't switch to non-root user yet - do it in entrypoint after config setup
 
 # Expose port
 EXPOSE 80
