@@ -132,6 +132,37 @@ docker run -d --name tv-wall-frontend \
   -p 3000:80 \
   -e REACT_APP_API_URL=http://localhost:8000 \
   cwhitio/tv-wall-frontend:latest
+
+# Run frontend in standalone mode (without backend)
+docker run -d --name tv-wall-frontend-standalone \
+  -p 3000:80 \
+  -e STANDALONE_MODE=true \
+  cwhitio/tv-wall-frontend:latest
+```
+
+### Frontend Deployment Modes
+
+The frontend container supports two deployment modes:
+
+#### 1. Regular Mode (Default)
+
+- Requires backend service to be accessible
+- Proxies API requests to backend service
+- Use when deploying with docker-compose or when backend is available
+
+#### 2. Standalone Mode
+
+- Serves only the frontend React application
+- No backend dependency required
+- Useful for deploying frontend to different servers or CDN
+- Enable by setting `STANDALONE_MODE=true` environment variable
+
+```bash
+# Standalone deployment example
+docker run -d --name tv-wall-frontend-standalone \
+  -p 3000:80 \
+  -e STANDALONE_MODE=true \
+  cwhitio/tv-wall-frontend:latest
 ```
 
 ### Docker Hub Repositories
