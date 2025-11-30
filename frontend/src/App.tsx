@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Power, Volume2, VolumeX, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, RotateCcw, Wifi, WifiOff, Settings, Clock, CheckCircle, XCircle, Loader, Home as HomeIcon, Info as InfoIcon, Monitor, Zap } from 'lucide-react';
+import { Power, Volume2, VolumeX, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, RotateCcw, Wifi, WifiOff, Settings, Clock, CheckCircle, XCircle, Loader, Home as HomeIcon, Info as InfoIcon, Monitor, Zap, Cog } from 'lucide-react';
+import Management from './Management';
 
 interface TV {
   ip: string;
@@ -25,7 +26,7 @@ interface BulkResult {
 
 const API_BASE = 'http://192.168.96.138:8000';
 
-function App() {
+const App = () => {
   const [tvs, setTvs] = useState<TV[]>([]);
   const [selectedTvs, setSelectedTvs] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -33,6 +34,7 @@ function App() {
   const [availableCommands, setAvailableCommands] = useState<string[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const [currentView, setCurrentView] = useState<'remote' | 'management'>('remote');
 
   // Load TVs and commands on startup
   useEffect(() => {
@@ -171,6 +173,16 @@ function App() {
     ? "min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white"
     : "min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 text-gray-900";
 
+  if (currentView === 'management') {
+    return (
+      <Management 
+        isDarkMode={isDarkMode} 
+        API_BASE={API_BASE} 
+        onBack={() => setCurrentView('remote')} 
+      />
+    );
+  }
+
   return (
     <div className={themeClasses}>
       <div className="max-w-6xl mx-auto p-4">
@@ -179,18 +191,34 @@ function App() {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-2">
-                Blackhawk TV Remote
+                {currentView === 'remote' ? 'Blackhawk TV Remote' : 'TV Management'}
               </h1>
               <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'} text-lg`}>
-                Control multiple TVs simultaneously. ***If TV is off, use WOL first!***
+                {currentView === 'remote' 
+                  ? 'Control multiple TVs simultaneously. ***If TV is off, use WOL first!***'
+                  : 'Manage your Samsung TVs and remote control key mappings'
+                }
               </p>
             </div>
-            <button
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className={`p-3 rounded-full ${isDarkMode ? 'bg-yellow-400 text-gray-900' : 'bg-gray-800 text-white'} transition-all hover:scale-110`}
-            >
-              {isDarkMode ? '☀️' : '🌙'}
-            </button>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setCurrentView(currentView === 'remote' ? 'management' : 'remote')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full shadow-md hover:shadow-lg transition-all hover:scale-105 font-semibold ${
+                  currentView === 'remote'
+                    ? 'bg-purple-500 text-white'
+                    : 'bg-blue-500 text-white'
+                }`}
+              >
+                <Cog className="w-5 h-5" />
+                {currentView === 'remote' ? 'Manage' : 'Remote'}
+              </button>
+              <button
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className={`p-3 rounded-full ${isDarkMode ? 'bg-yellow-400 text-gray-900' : 'bg-gray-800 text-white'} transition-all hover:scale-110`}
+              >
+                {isDarkMode ? '☀️' : '🌙'}
+              </button>
+            </div>
           </div>
         </header>
 

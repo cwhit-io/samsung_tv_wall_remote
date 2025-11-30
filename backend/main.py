@@ -8,12 +8,14 @@ import concurrent.futures
 import time
 import logging
 import inspect
+from datetime import datetime
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Samsung TV Controller API - Auto-Detect", version="2.0.0")
+print("FastAPI app created")
 
 # Enable CORS
 app.add_middleware(
@@ -23,6 +25,7 @@ app.add_middleware(
   allow_methods=["*"],
   allow_headers=["*"],
 )
+print("CORS enabled")
 
 # Auto-detect function names from samsung_controller
 def get_samsung_functions():
@@ -40,6 +43,7 @@ def get_samsung_functions():
 # Get available functions
 SAMSUNG_FUNCTIONS = get_samsung_functions()
 logger.info(f"Available samsung_controller functions: {list(SAMSUNG_FUNCTIONS.keys())}")
+print(f"Found {len(SAMSUNG_FUNCTIONS)} functions")
 
 # Health check endpoint for Docker
 @app.get("/health")
@@ -61,8 +65,20 @@ class BulkCommandResult(BaseModel):
   success_count: int
   failure_count: int
 
+class TVInfo(BaseModel):
+  ip: str
+  name: str
+  model: str = ""
+  mac: str = ""
+  token: str = ""
+  paired_client_mac: str = ""
+
+class TokenMapping(BaseModel):
+  name: str
+  token: str
+
 # Thread pool for concurrent operations
-executor = concurrent.futures.ThreadPoolExecutor(max_workers=20)
+# executor = concurrent.futures.ThreadPoolExecutor(max_workers=20)
 
 def execute_command_for_tv(ip: str, command: str) -> Dict[str, Any]:
   """Execute a command for a single TV with auto-detected functions"""
@@ -226,70 +242,209 @@ async def get_available_commands():
       logger.error(f"Error loading commands: {e}")
       return {"commands": [], "error": str(e)}
 
-@app.post("/bulk-command", response_model=BulkCommandResult)
-async def execute_bulk_command(request: TVCommand):
-  """Execute a command on multiple TVs concurrently"""
-  logger.info(f"Bulk command request: {request.model_dump()}")
-  
-  if not request.ips:
-      raise HTTPException(status_code=400, detail="No TV IPs provided")
-  
-  start_time = time.time()
-  
-  # Create tasks for concurrent execution
-  loop = asyncio.get_event_loop()
-  tasks = []
-  
-  for ip in request.ips:
-      logger.info(f"Creating task for IP: {ip}")
-      task = loop.run_in_executor(
-          executor, 
-          execute_command_for_tv, 
-          ip, 
-          request.command
-      )
-      tasks.append(task)
-  
-  # Wait for all tasks to complete
-  logger.info(f"Waiting for {len(tasks)} tasks to complete...")
-  results = await asyncio.gather(*tasks, return_exceptions=True)
-  logger.info(f"All tasks completed. Processing {len(results)} results...")
-  
-  # Process results
-  processed_results = []
-  success_count = 0
-  failure_count = 0
-  
-  for result in results:
-      if isinstance(result, Exception):
-          logger.error(f"Task exception: {result}")
-          processed_results.append({
-              "ip": "unknown",
-              "command": request.command,
-              "success": False,
-              "message": f"Exception: {str(result)}",
-              "response_time": 0,
-              "raw_result": None
+@app.get("/keys")
+async def get_keys():
+  """Get all key mappings"""
+  try:
+      if 'load_tv_keys' in SAMSUNG_FUNCTIONS:
+          keys = SAMSUNG_FUNCTIONS['load_tv_keys']()
+          return {"keys": keys}
+      return {"keys": {}, "error": "No key loading function found"}
+  except Exception as e:
+      logger.error(f"Error loading keys: {e}")
+      return {"keys": {}, "error": str(e)}
+
+@app.post("/tvs")
+async def add_tv(tv: TVInfo):
+  """Add a new TV"""
+  try:
+      if 'load_tv_info' in SAMSUNG_FUNCTIONS:
+          tv_info = SAMSUNG_FUNCTIONS['load_tv_info']()
+          if tv.ip in tv_info.get("tvs", {}):
+              raise HTTPException(status_code=400, detail="TV with this IP already exists")
+          
+          tv_info["tvs"][tv.ip] = {
+              "name": tv.name,
+              "model": tv.model,
+              "mac": tv.mac,
+              "token": tv.token,
+              "paired_client_mac": tv.paired_client_mac,
+              "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+          }
+          
+          if 'save_tv_info' in SAMSUNG_FUNCTIONS:
+              SAMSUNG_FUNCTIONS['save_tv_info'](tv_info)
+          
+          return {"message": "TV added successfully", "tv": tv_info["tvs"][tv.ip]}
+      raise HTTPException(status_code=500, detail="TV info functions not available")
+  except HTTPException:
+      raise
+  except Exception as e:
+      logger.error(f"Error adding TV: {e}")
+      raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/tvs/{ip}")
+async def update_tv(ip: str, tv: TVInfo):
+  """Update an existing TV"""
+  try:
+      if 'load_tv_info' in SAMSUNG_FUNCTIONS:
+          tv_info = SAMSUNG_FUNCTIONS['load_tv_info']()
+          if ip not in tv_info.get("tvs", {}):
+              raise HTTPException(status_code=404, detail="TV not found")
+          
+          tv_info["tvs"][ip].update({
+              "name": tv.name,
+              "model": tv.model,
+              "mac": tv.mac,
+              "token": tv.token,
+              "paired_client_mac": tv.paired_client_mac,
+              "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
           })
-          failure_count += 1
-      else:
-          processed_results.append(result)
-          if result["success"]:
-              success_count += 1
-          else:
-              failure_count += 1
-  
-  total_time = round(time.time() - start_time, 3)
-  
-  final_response = BulkCommandResult(
-      results=processed_results,
-      total_time=total_time,
-      success_count=success_count,
-      failure_count=failure_count
-  )
-  
-  logger.info(f"Bulk command completed: {success_count} success, {failure_count} failed, {total_time}s total")
-  return final_response
+          
+          if 'save_tv_info' in SAMSUNG_FUNCTIONS:
+              SAMSUNG_FUNCTIONS['save_tv_info'](tv_info)
+          
+          return {"message": "TV updated successfully", "tv": tv_info["tvs"][ip]}
+      raise HTTPException(status_code=500, detail="TV info functions not available")
+  except HTTPException:
+      raise
+  except Exception as e:
+      logger.error(f"Error updating TV: {e}")
+      raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/tvs/{ip}")
+async def delete_tv(ip: str):
+  """Delete a TV"""
+  try:
+      if 'load_tv_info' in SAMSUNG_FUNCTIONS:
+          tv_info = SAMSUNG_FUNCTIONS['load_tv_info']()
+          if ip not in tv_info.get("tvs", {}):
+              raise HTTPException(status_code=404, detail="TV not found")
+          
+          deleted_tv = tv_info["tvs"].pop(ip)
+          
+          if 'save_tv_info' in SAMSUNG_FUNCTIONS:
+              SAMSUNG_FUNCTIONS['save_tv_info'](tv_info)
+          
+          return {"message": "TV deleted successfully", "tv": deleted_tv}
+      raise HTTPException(status_code=500, detail="TV info functions not available")
+  except HTTPException:
+      raise
+  except Exception as e:
+      logger.error(f"Error deleting TV: {e}")
+      raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/keys")
+async def add_key(key_mapping: KeyMapping):
+  """Add a new key mapping"""
+  try:
+      if 'load_tv_keys' in SAMSUNG_FUNCTIONS and 'save_tv_keys' in SAMSUNG_FUNCTIONS:
+          keys = SAMSUNG_FUNCTIONS['load_tv_keys']()
+          if key_mapping.name in keys:
+              raise HTTPException(status_code=400, detail="Key with this name already exists")
+          
+          keys[key_mapping.name] = key_mapping.key
+          SAMSUNG_FUNCTIONS['save_tv_keys'](keys)
+          
+          return {"message": "Key added successfully", "key": {key_mapping.name: key_mapping.key}}
+      raise HTTPException(status_code=500, detail="Key functions not available")
+  except HTTPException:
+      raise
+  except Exception as e:
+      logger.error(f"Error adding key: {e}")
+      raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/keys/{key_name}")
+async def update_key(key_name: str, key_mapping: KeyMapping):
+  """Update an existing key mapping"""
+  try:
+      if 'load_tv_keys' in SAMSUNG_FUNCTIONS and 'save_tv_keys' in SAMSUNG_FUNCTIONS:
+          keys = SAMSUNG_FUNCTIONS['load_tv_keys']()
+          if key_name not in keys:
+              raise HTTPException(status_code=404, detail="Key not found")
+          
+          keys[key_name] = key_mapping.key
+          SAMSUNG_FUNCTIONS['save_tv_keys'](keys)
+          
+          return {"message": "Key updated successfully", "key": {key_name: key_mapping.key}}
+      raise HTTPException(status_code=500, detail="Key functions not available")
+  except HTTPException:
+      raise
+  except Exception as e:
+      logger.error(f"Error updating key: {e}")
+      raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/tokens")
+async def get_tokens():
+  """Get all token mappings"""
+  try:
+      if 'load_tv_tokens' in SAMSUNG_FUNCTIONS:
+          tokens = SAMSUNG_FUNCTIONS['load_tv_tokens']()
+          return {"tokens": tokens}
+      return {"tokens": {}, "error": "No token loading function found"}
+  except Exception as e:
+      logger.error(f"Error loading tokens: {e}")
+      return {"tokens": {}, "error": str(e)}
+
+@app.post("/tokens")
+async def add_token(token_mapping: TokenMapping):
+  """Add a new token mapping"""
+  try:
+      if 'load_tv_tokens' in SAMSUNG_FUNCTIONS and 'save_tv_tokens' in SAMSUNG_FUNCTIONS:
+          tokens = SAMSUNG_FUNCTIONS['load_tv_tokens']()
+          if token_mapping.name in tokens:
+              raise HTTPException(status_code=400, detail="Token with this name already exists")
+          
+          tokens[token_mapping.name] = token_mapping.token
+          SAMSUNG_FUNCTIONS['save_tv_tokens'](tokens)
+          
+          return {"message": "Token added successfully", "token": {token_mapping.name: token_mapping.token}}
+      raise HTTPException(status_code=500, detail="Token functions not available")
+  except HTTPException:
+      raise
+  except Exception as e:
+      logger.error(f"Error adding token: {e}")
+      raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/tokens/{token_name}")
+async def update_token(token_name: str, token_mapping: TokenMapping):
+  """Update an existing token mapping"""
+  try:
+      if 'load_tv_tokens' in SAMSUNG_FUNCTIONS and 'save_tv_tokens' in SAMSUNG_FUNCTIONS:
+          tokens = SAMSUNG_FUNCTIONS['load_tv_tokens']()
+          if token_name not in tokens:
+              raise HTTPException(status_code=404, detail="Token not found")
+          
+          tokens[token_name] = token_mapping.token
+          SAMSUNG_FUNCTIONS['save_tv_tokens'](tokens)
+          
+          return {"message": "Token updated successfully", "token": {token_name: token_mapping.token}}
+      raise HTTPException(status_code=500, detail="Token functions not available")
+  except HTTPException:
+      raise
+  except Exception as e:
+      logger.error(f"Error updating token: {e}")
+      raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/tokens/{token_name}")
+async def delete_token(token_name: str):
+  """Delete a token mapping"""
+  try:
+      if 'load_tv_tokens' in SAMSUNG_FUNCTIONS and 'save_tv_tokens' in SAMSUNG_FUNCTIONS:
+          tokens = SAMSUNG_FUNCTIONS['load_tv_tokens']()
+          if token_name not in tokens:
+              raise HTTPException(status_code=404, detail="Token not found")
+          
+          deleted_token = {token_name: tokens.pop(token_name)}
+          SAMSUNG_FUNCTIONS['save_tv_tokens'](tokens)
+          
+          return {"message": "Token deleted successfully", "token": deleted_token}
+      raise HTTPException(status_code=500, detail="Token functions not available")
+  except HTTPException:
+      raise
+  except Exception as e:
+      logger.error(f"Error deleting token: {e}")
+      raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/debug/{ip}")
@@ -353,10 +508,11 @@ async def health_check():
       "auto_detect_mode": True,
       "detected_functions": len(SAMSUNG_FUNCTIONS),
       "function_names": list(SAMSUNG_FUNCTIONS.keys()),
-      "concurrent_enabled": True,
-      "max_workers": executor._max_workers
+      "concurrent_enabled": False,
+      "max_workers": 0
   }
 
-if __name__ == "__main__":
-  import uvicorn
-  uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
+# if __name__ == "__main__":
+#   import uvicorn
+#   print("Starting server...")
+#   uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")

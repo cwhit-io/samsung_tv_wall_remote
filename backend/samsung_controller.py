@@ -39,9 +39,9 @@ def load_tv_keys():
         'hdmi4': 'KEY_HDMI4'
     }
 
-def save_tv_info(tv_info):
-    with open(TV_INFO_FILE, 'w') as f:
-        json.dump(tv_info, f, indent=4)
+def save_tv_keys(tv_keys):
+    with open(TV_KEYS_FILE, 'w') as f:
+        json.dump({"keys": tv_keys}, f, indent=4)
 
 def get_tv_info(ip):
     return load_tv_info()["tvs"].get(ip)
