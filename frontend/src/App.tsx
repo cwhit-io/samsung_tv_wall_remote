@@ -33,13 +33,14 @@ const getApiBase = () => {
   }
   
   // For development, typically localhost:3000 -> localhost:8000
-  // For production, use same host as frontend but port 8000
+  // For production, use same host as frontend but port 8000 (or custom port)
   const protocol = window.location.protocol;
   const hostname = window.location.hostname;
+  const port = process.env.REACT_APP_API_PORT || '8000';
   
   // If running on localhost/127.0.0.1, backend is typically on port 8000
   // Otherwise, backend is on same host port 8000
-  return `${protocol}//${hostname}:8000`;
+  return `${protocol}//${hostname}:${port}`;
 };
 
 const API_BASE = getApiBase();
