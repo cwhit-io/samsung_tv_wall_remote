@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    image: cwhitio/tv-wall-backend:latest
+    image: ghcr.io/cwhit-io/tv-wall-backend:latest
     ports:
       - "8000:8000"
     environment:
@@ -15,7 +15,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: cwhitio/tv-wall-frontend:latest
+    image: ghcr.io/cwhit-io/tv-wall-frontend:latest
     ports:
       - "3000:80"  # Map to nginx port 80
     depends_on:

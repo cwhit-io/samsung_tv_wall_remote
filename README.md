@@ -126,18 +126,18 @@ docker run -d --name tv-wall-backend \
   -p 8000:8000 \
   -v ./backend/tv_info.json:/app/tv_info.json:ro \
   -v ./backend/tv_keys.json:/app/tv_keys.json:ro \
-  cwhitio/tv-wall-backend:latest
+  ghcr.io/cwhit-io/tv-wall-backend:latest
 
 docker run -d --name tv-wall-frontend \
   -p 3000:80 \
   -e REACT_APP_API_URL=http://localhost:8000 \
-  cwhitio/tv-wall-frontend:latest
+  ghcr.io/cwhit-io/tv-wall-frontend:latest
 
 # Run frontend in standalone mode (without backend)
 docker run -d --name tv-wall-frontend-standalone \
   -p 3000:80 \
   -e STANDALONE_MODE=true \
-  cwhitio/tv-wall-frontend:latest
+  ghcr.io/cwhit-io/tv-wall-frontend:latest
 ```
 
 ### Frontend Deployment Modes
@@ -162,13 +162,13 @@ The frontend container supports two deployment modes:
 docker run -d --name tv-wall-frontend-standalone \
   -p 3000:80 \
   -e STANDALONE_MODE=true \
-  cwhitio/tv-wall-frontend:latest
+  ghcr.io/cwhit-io/tv-wall-frontend:latest
 ```
 
-### Docker Hub Repositories
+### GitHub Container Registry
 
-- **Backend**: [cwhitio/tv-wall-backend](https://hub.docker.com/r/cwhitio/tv-wall-backend)
-- **Frontend**: [cwhitio/tv-wall-frontend](https://hub.docker.com/r/cwhitio/tv-wall-frontend)
+- **Backend**: [ghcr.io/cwhit-io/tv-wall-backend](https://github.com/cwhit-io/samsung_tv_wall_remote/pkgs/container/tv-wall-backend)
+- **Frontend**: [ghcr.io/cwhit-io/tv-wall-frontend](https://github.com/cwhit-io/samsung_tv_wall_remote/pkgs/container/tv-wall-frontend)
 
 ### Building Locally
 
