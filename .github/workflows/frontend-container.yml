@@ -27,7 +27,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-      attestations: write
+      id-token: write  # Add this for attestations
 
     steps:
       - name: Checkout repository
@@ -54,11 +54,11 @@ jobs:
             type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=sha,prefix=sha-
+            type=sha,prefix=sha-,format=short
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Docker image
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
@@ -68,4 +68,4 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          platforms: linux/amd64
+          platforms: linux/amd64  # Removed arm64
