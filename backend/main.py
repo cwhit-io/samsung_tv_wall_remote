@@ -77,6 +77,10 @@ class TokenMapping(BaseModel):
   name: str
   token: str
 
+class KeyMapping(BaseModel):
+  name: str
+  key: str
+
 # Thread pool for concurrent operations
 # executor = concurrent.futures.ThreadPoolExecutor(max_workers=20)
 
