@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any
-from . import samsung_controller
+import samsung_controller
 import asyncio
 import concurrent.futures
 import time
