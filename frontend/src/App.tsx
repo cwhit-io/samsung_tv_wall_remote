@@ -24,7 +24,25 @@ interface BulkResult {
   failure_count: number;
 }
 
-const API_BASE = 'http://192.168.96.138:8000';
+// Determine API base URL dynamically
+// 1. Use REACT_APP_API_URL env variable if set
+// 2. Otherwise use window.location to build URL (works in dev and prod)
+const getApiBase = () => {
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
+  }
+  
+  // For development, typically localhost:3000 -> localhost:8000
+  // For production, use same host as frontend but port 8000
+  const protocol = window.location.protocol;
+  const hostname = window.location.hostname;
+  
+  // If running on localhost/127.0.0.1, backend is typically on port 8000
+  // Otherwise, backend is on same host port 8000
+  return `${protocol}//${hostname}:8000`;
+};
+
+const API_BASE = getApiBase();
 
 const App = () => {
   const [tvs, setTvs] = useState<TV[]>([]);
