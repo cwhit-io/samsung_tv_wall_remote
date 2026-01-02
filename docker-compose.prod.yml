@@ -3,8 +3,6 @@ version: '3.8'
 services:
   backend:
     image: ghcr.io/cwhit-io/tv-wall-backend:latest
-    ports:
-      - "8000:8000"
     environment:
       - PYTHONPATH=/app
     volumes:

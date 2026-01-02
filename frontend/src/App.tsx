@@ -25,22 +25,16 @@ interface BulkResult {
 }
 
 // Determine API base URL dynamically
-// 1. Use REACT_APP_API_URL env variable if set
-// 2. Otherwise use window.location to build URL (works in dev and prod)
+// 1. Use REACT_APP_API_URL env variable if set (recommended for containerized deployments)
+// 2. Otherwise use /api relative path to route through nginx proxy
 const getApiBase = () => {
   if (process.env.REACT_APP_API_URL) {
     return process.env.REACT_APP_API_URL;
   }
-  
-  // For development, typically localhost:3000 -> localhost:8000
-  // For production, use same host as frontend but port 8000 (or custom port)
-  const protocol = window.location.protocol;
-  const hostname = window.location.hostname;
-  const port = process.env.REACT_APP_API_PORT || '8000';
-  
-  // If running on localhost/127.0.0.1, backend is typically on port 8000
-  // Otherwise, backend is on same host port 8000
-  return `${protocol}//${hostname}:${port}`;
+
+  // Default to nginx proxy path - this avoids CORS issues
+  // and works in both development and production
+  return '/api';
 };
 
 const API_BASE = getApiBase();
@@ -64,7 +58,15 @@ const App = () => {
   const loadTvs = async () => {
     try {
       const response = await fetch(`${API_BASE}/tvs`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
       const data = await response.json();
+      if (!data.tvs) {
+        console.warn('API response missing tvs field:', data);
+        setTvs([]);
+        return;
+      }
       const tvList = Object.entries(data.tvs).map(([ip, info]: [string, any]) => ({
         ip,
         name: info.name || `TV ${ip}`,
@@ -74,16 +76,26 @@ const App = () => {
       setTvs(tvList);
     } catch (error) {
       console.error('Failed to load TVs:', error);
+      setTvs([]);
     }
   };
 
   const loadCommands = async () => {
     try {
       const response = await fetch(`${API_BASE}/commands`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
       const data = await response.json();
+      if (!data.commands || !Array.isArray(data.commands)) {
+        console.warn('API response missing or invalid commands field:', data);
+        setAvailableCommands([]);
+        return;
+      }
       setAvailableCommands(data.commands);
     } catch (error) {
       console.error('Failed to load commands:', error);
+      setAvailableCommands([]);
     }
   };
 
@@ -128,8 +140,8 @@ const App = () => {
   };
 
   const toggleTvSelection = (ip: string) => {
-    setSelectedTvs(prev => 
-      prev.includes(ip) 
+    setSelectedTvs(prev =>
+      prev.includes(ip)
         ? prev.filter(tvIp => tvIp !== ip)
         : [...prev, ip]
     );
@@ -143,13 +155,13 @@ const App = () => {
     setSelectedTvs([]);
   };
 
-  const RemoteButton = ({ 
-    onClick, 
-    children, 
-    className = "", 
+  const RemoteButton = ({
+    onClick,
+    children,
+    className = "",
     variant = "default",
     size = "default",
-    disabled = false 
+    disabled = false
   }: {
     onClick: () => void;
     children: React.ReactNode;
@@ -159,13 +171,13 @@ const App = () => {
     disabled?: boolean;
   }) => {
     const baseClasses = "flex flex-col items-center justify-center rounded-2xl font-semibold transition-all duration-150 transform active:scale-95 shadow-lg hover:shadow-xl disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none";
-    
+
     const variantClasses = {
       "power-on": "bg-gradient-to-b from-green-400 to-green-600 text-white hover:from-green-300 hover:to-green-500 shadow-green-200",
       "power-off": "bg-gradient-to-b from-red-400 to-red-600 text-white hover:from-red-300 hover:to-red-500 shadow-red-200",
       "primary": "bg-gradient-to-b from-blue-400 to-blue-600 text-white hover:from-blue-300 hover:to-blue-500 shadow-blue-200",
       "secondary": "bg-gradient-to-b from-gray-400 to-gray-600 text-white hover:from-gray-300 hover:to-gray-500 shadow-gray-200",
-      "number": isDarkMode 
+      "number": isDarkMode
         ? "bg-gradient-to-b from-gray-700 to-gray-800 text-white hover:from-gray-600 hover:to-gray-700 border-2 border-gray-600 shadow-gray-700"
         : "bg-gradient-to-b from-gray-100 to-gray-200 text-gray-800 hover:from-gray-50 hover:to-gray-100 border-2 border-gray-300 shadow-gray-100",
       "default": "bg-gradient-to-b from-slate-400 to-slate-600 text-white hover:from-slate-300 hover:to-slate-500 shadow-slate-200"
@@ -188,16 +200,16 @@ const App = () => {
     );
   };
 
-  const themeClasses = isDarkMode 
+  const themeClasses = isDarkMode
     ? "min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white"
     : "min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 text-gray-900";
 
   if (currentView === 'management') {
     return (
-      <Management 
-        isDarkMode={isDarkMode} 
-        API_BASE={API_BASE} 
-        onBack={() => setCurrentView('remote')} 
+      <Management
+        isDarkMode={isDarkMode}
+        API_BASE={API_BASE}
+        onBack={() => setCurrentView('remote')}
       />
     );
   }
@@ -213,7 +225,7 @@ const App = () => {
                 {currentView === 'remote' ? 'Blackhawk TV Remote' : 'TV Management'}
               </h1>
               <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'} text-lg`}>
-                {currentView === 'remote' 
+                {currentView === 'remote'
                   ? 'Control multiple TVs simultaneously. ***If TV is off, use WOL first!***'
                   : 'Manage your Samsung TVs and remote control key mappings'
                 }
@@ -222,11 +234,10 @@ const App = () => {
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setCurrentView(currentView === 'remote' ? 'management' : 'remote')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full shadow-md hover:shadow-lg transition-all hover:scale-105 font-semibold ${
-                  currentView === 'remote'
-                    ? 'bg-purple-500 text-white'
-                    : 'bg-blue-500 text-white'
-                }`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full shadow-md hover:shadow-lg transition-all hover:scale-105 font-semibold ${currentView === 'remote'
+                  ? 'bg-purple-500 text-white'
+                  : 'bg-blue-500 text-white'
+                  }`}
               >
                 <Cog className="w-5 h-5" />
                 {currentView === 'remote' ? 'Manage' : 'Remote'}
@@ -268,32 +279,31 @@ const App = () => {
           <div className="grid grid-cols-5 gap-2 max-w-4xl mx-auto">
             {(() => {
               const gridNames = [
-                ...Array(5).fill(0).map((_, i) => `T${i+1} TV`),
-                ...Array(5).fill(0).map((_, i) => `M${i+1} TV`),
-                ...Array(5).fill(0).map((_, i) => `B${i+1} TV`)
+                ...Array(5).fill(0).map((_, i) => `T${i + 1} TV`),
+                ...Array(5).fill(0).map((_, i) => `M${i + 1} TV`),
+                ...Array(5).fill(0).map((_, i) => `B${i + 1} TV`)
               ];
               const tvMap = Object.fromEntries(tvs.map(tv => [tv.name, tv]));
-              
+
               return gridNames.map((name, idx) => {
                 const tv = tvMap[name];
-                
+
                 if (tv) {
                   return (
                     <div
                       key={tv.ip}
                       onClick={() => toggleTvSelection(tv.ip)}
-                      className={`relative p-3 rounded-xl cursor-pointer transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg h-20 ${
-                        selectedTvs.includes(tv.ip)
-                          ? `${isDarkMode ? 'bg-gradient-to-br from-blue-500/40 to-purple-500/40 border-blue-400' : 'bg-gradient-to-br from-blue-200 to-purple-200 border-blue-500'} border-2 scale-105`
-                          : `${isDarkMode ? 'bg-gray-700/60 border-gray-600 hover:bg-gray-600/60' : 'bg-white/90 border-gray-300 hover:bg-gray-50'} border`
-                      }`}
+                      className={`relative p-3 rounded-xl cursor-pointer transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg h-20 ${selectedTvs.includes(tv.ip)
+                        ? `${isDarkMode ? 'bg-gradient-to-br from-blue-500/40 to-purple-500/40 border-blue-400' : 'bg-gradient-to-br from-blue-200 to-purple-200 border-blue-500'} border-2 scale-105`
+                        : `${isDarkMode ? 'bg-gray-700/60 border-gray-600 hover:bg-gray-600/60' : 'bg-white/90 border-gray-300 hover:bg-gray-50'} border`
+                        }`}
                     >
                       <div className="flex flex-col items-center justify-center h-full relative">
                         <Monitor className={`w-5 h-5 mb-1 ${selectedTvs.includes(tv.ip) ? 'text-blue-400' : isDarkMode ? 'text-gray-400' : 'text-gray-600'}`} />
                         <h3 className={`font-bold text-sm text-center leading-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                           {name.replace(' TV', '')}
                         </h3>
-                        
+
                         {/* Overlay checkmark that doesn't affect layout */}
                         {selectedTvs.includes(tv.ip) && (
                           <div className="absolute inset-0 flex items-center justify-center">
@@ -336,7 +346,7 @@ const App = () => {
             <Settings className="w-8 h-8 text-purple-400" />
             Remote Control
           </h2>
-          
+
           <div className="flex flex-col items-center gap-8 w-full max-w-2xl mx-auto">
             {/* Power Controls */}
             <div className="grid grid-cols-2 gap-6 w-full max-w-md">
@@ -443,7 +453,7 @@ const App = () => {
 
             {/* Number Pad */}
             <div className="grid grid-cols-3 gap-3 w-full max-w-xs">
-              {[1,2,3,4,5,6,7,8,9].map(n => (
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
                 <RemoteButton
                   key={n}
                   onClick={() => executeBulkCommand(String(n))}
@@ -525,7 +535,7 @@ const App = () => {
                 </>
               )}
             </h2>
-            
+
             {bulkResult && (
               <>
                 <div className="grid grid-cols-3 gap-6 mb-8">
@@ -545,16 +555,15 @@ const App = () => {
                     <div className={`text-sm font-semibold ${isDarkMode ? 'text-blue-300' : 'text-blue-600'}`}>Total Time</div>
                   </div>
                 </div>
-                
+
                 <div className="space-y-3">
                   {bulkResult.results.map((result, index) => (
                     <div
                       key={index}
-                      className={`p-4 rounded-xl flex items-center justify-between transition-all hover:scale-[1.02] ${
-                        result.success 
-                          ? `${isDarkMode ? 'bg-green-500/10 border-green-400/30' : 'bg-green-50 border-green-200'} border-l-4 border-l-green-400 shadow-lg` 
-                          : `${isDarkMode ? 'bg-red-500/10 border-red-400/30' : 'bg-red-50 border-red-200'} border-l-4 border-l-red-400 shadow-lg`
-                      } border`}
+                      className={`p-4 rounded-xl flex items-center justify-between transition-all hover:scale-[1.02] ${result.success
+                        ? `${isDarkMode ? 'bg-green-500/10 border-green-400/30' : 'bg-green-50 border-green-200'} border-l-4 border-l-green-400 shadow-lg`
+                        : `${isDarkMode ? 'bg-red-500/10 border-red-400/30' : 'bg-red-50 border-red-200'} border-l-4 border-l-red-400 shadow-lg`
+                        } border`}
                     >
                       <div className="flex items-center">
                         {result.success ? (

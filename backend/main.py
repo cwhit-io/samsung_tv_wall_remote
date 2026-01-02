@@ -312,6 +312,44 @@ async def get_keys():
         return {"keys": {}, "error": str(e)}
 
 
+@app.post("/bulk-command")
+async def execute_bulk_command(tv_command: TVCommand):
+    """Execute a command on multiple TVs"""
+    try:
+        start_time = time.time()
+        results = []
+        success_count = 0
+        failure_count = 0
+
+        # Use ThreadPoolExecutor for parallel execution
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            futures = {
+                executor.submit(execute_command_for_tv, ip, tv_command.command): ip
+                for ip in tv_command.ips
+            }
+
+            for future in concurrent.futures.as_completed(futures):
+                result = future.result()
+                results.append(result)
+                if result.get("success", False):
+                    success_count += 1
+                else:
+                    failure_count += 1
+
+        total_time = round(time.time() - start_time, 3)
+
+        return BulkCommandResult(
+            results=results,
+            total_time=total_time,
+            success_count=success_count,
+            failure_count=failure_count,
+        )
+
+    except Exception as e:
+        logger.error(f"Error executing bulk command: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/tvs")
 async def add_tv(tv: TVInfo):
     """Add a new TV"""
